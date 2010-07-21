@@ -26,7 +26,7 @@ install: all
 	install -m 755 $(TARGETS) $(BINDIR)
 	-mkdir -p $(_BINDIR)
 	install -m 755 matchpathcon $(_BINDIR)
-	(cd $(BINDIR); 	ln -fs ../../sbin/matchpathcon)
+	(cd $(BINDIR); 	ln -fs /sbin/matchpathcon)
 clean:
 	rm -f $(TARGETS) matchpathcon *.o *~
 
