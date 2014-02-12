@@ -413,6 +413,11 @@ extern int matchpathcon_init_prefix(const char *path, const char *prefix);
 /* Free the memory allocated by matchpathcon_init. */
 extern void matchpathcon_fini(void);
 
+/* Resolve all of the symlinks and relative portions of a pathname, but NOT
+ * the final component (same a realpath() unless the final component is a
+ * symlink.  Resolved path must be a path of size PATH_MAX + 1 */
+extern int realpath_not_final(const char *name, char *resolved_path);
+
 /* Match the specified pathname and mode against the file contexts
    configuration and set *con to refer to the resulting context.
    'mode' can be 0 to disable mode matching.
@@ -482,6 +487,7 @@ extern const char *selinux_file_context_path(void);
 extern const char *selinux_file_context_homedir_path(void);
 extern const char *selinux_file_context_local_path(void);
 extern const char *selinux_file_context_subs_path(void);
+extern const char *selinux_file_context_subs_dist_path(void);
 extern const char *selinux_homedir_context_path(void);
 extern const char *selinux_media_context_path(void);
 extern const char *selinux_virtual_domain_context_path(void);
@@ -499,6 +505,25 @@ extern const char *selinux_colors_path(void);
 extern const char *selinux_netfilter_context_path(void);
 extern const char *selinux_path(void);
 
+/**
+ * selinux_check_access - Check permissions and perform appropriate auditing.
+ * @scon: source security context
+ * @tcon: target security context
+ * @tclass: target security class string
+ * @perm: requested permissions string, interpreted based on @tclass
+ * @auditdata: auxiliary audit data
+ *
+ * Check the AVC to determine whether the @perm permissions are granted
+ * for the SID pair (@scon, @tcon), interpreting the permissions
+ * based on @tclass.
+ * Return %0 if all @perm permissions are granted, -%1 with 
+ * @errno set to %EACCES if any permissions are denied or to another 
+ * value upon other errors.
+ * If auditing or logging is configured the appropriate callbacks will be called
+ * and passed the auditdata field
+ */
+extern int selinux_check_access(const security_context_t scon, const security_context_t tcon, const char *tclass, const char *perm, void *auditdata);
+
 /* Check a permission in the passwd class.
    Return 0 if granted or -1 otherwise. */
 extern int selinux_check_passwd_access(access_vector_t requested);
@@ -513,6 +538,12 @@ extern int selinux_check_securetty_context(const security_context_t tty_context)
    initialization, but this is not always possible, e.g. for /sbin/init
    which performs the initial mount of selinuxfs. */
 void set_selinuxmnt(char *mnt);
+
+/* Check if selinuxfs exists as a kernel filesystem */
+int selinuxfs_exists(void);
+
+/* clear selinuxmnt variable and free allocated memory */
+void fini_selinuxmnt(void);
 
 /* Execute a helper for rpm in an appropriate security context. */
 extern int rpm_execcon(unsigned int verified,
@@ -562,7 +593,7 @@ extern int selinux_file_context_cmp(const security_context_t a,
 
 /* 
  * Verify the context of the file 'path' against policy.
- * Return 0 if correct. 
+ * Return 1 if match, 0 if not and -1 on error.
  */
 extern int selinux_file_context_verify(const char *path, mode_t mode);
 

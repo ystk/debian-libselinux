@@ -1,3 +1,99 @@
+2.1.9 2011-12-21
+	* Fix setenforce man page to refer to selinux man page
+	* Cleanup Man pages
+	* merge freecon with getcon man page
+
+2.1.8 2011-12-05
+	* selinuxswig_python.i: don't make syscall if it won't change anything
+	* Remove assert in security_get_boolean_names(3)
+	* Mapped compute functions now obey deny_unknown flag
+	* get_default_type now sets EINVAL if no entry.
+	* return EINVAL if invalid role selected
+	* Updated selabel_file(5) man page
+	* Updated selabel_db(5) man page
+	* Updated selabel_media(5) man page
+	* Updated selabel_x(5) man page
+	* Add man/man5 man pages
+	* Add man/man5 man pages
+	* Add man/man5 man pages
+	* use -W and -Werror in utils
+
+2.1.7 2011-11-03
+	* Makefiles: syntax, convert all ${VAR} to $(VAR)
+	* load_policy: handle selinux=0 and /sys/fs/selinux not exist
+	* regenerate .pc on VERSION change
+	* label: cosmetic cleanups
+	* simple interface for access checks
+	* Don't reinitialize avc_init if it has been called previously
+	* seusers: fix to handle large sets of groups
+	* audit2why: close fd on enomem
+	* rename and export symlink_realpath
+	* label_file: style changes to make Eric happy.
+
+2.1.6 2011-09-15
+	* utils: matchpathcon: remove duplicate declaration
+	* src: matchpathcon: use myprintf not fprintf
+	* src: matchpathcon: make sure resolved path starts
+	* put libselinux.so.1 in /lib not /usr/lib
+	* tree: default make target to all not
+
+2.1.5 2011-0826
+	* selinux_file_context_verify function returns wrong value.
+	* move realpath helper to matchpathcon library
+	* python wrapper makefile changes
+
+2.1.4 2011-0817
+	* mapping fix for invalid class/perms after selinux_set_mapping
+	* audit2why: work around python bug not defining
+	* resolv symlinks and dot directories before matching
+
+2.1.2 2011-0803
+	* audit2allow: do not print statistics
+	* make python bindings for restorecon work on relative path
+	* fix python audit2why binding error
+	* support new python3 functions
+	* do not check fcontext duplicates on use
+	* Patch for python3 for libselinux
+
+2.1.1 2011-08-02
+	* move .gitignore into utils
+	* new setexecon utility
+	* selabel_open fix processing of substitution files
+	* mountpoint changing patch.
+	* simplify SRCS in Makefile
+
+2.1.1 2011-08-01
+	* Remove generated files, introduce more .gitignore
+
+2.1.0 2011-07-27
+	* Release, minor version bump
+
+2.0.102 2011-04-11
+	* Give correct names to mount points in load_policy by Dan Walsh.
+	* Make sure selinux state is reported correctly if selinux is disabled or
+	fails to load by Dan Walsh.
+	* Fix crash if selinux_key_create was never called by Dan Walsh.
+	* Add new file_context.subs_dist for distro specific filecon substitutions
+	by Dan Walsh.
+	* Update man pages for selinux_color_* functions by Richard Haines.
+
+2.0.101 2011-03-23
+	* db_language object class support for selabel_lookup from KaiGai
+	Kohei.
+
+2.0.100 2011-03-09
+	* Library destructors for thread local storage keys from Eamon Walsh.
+
+2.0.99 2011-03-01
+	* SELinux man page fixes from Dan Walsh.
+	* selinux_status interfaces from KaiGai Kohei.
+
+2.0.98 2010-12-16
+	* Turn off default user handling when computing user contexts by Dan Walsh
+
+2.0.97 2010-12-02
+	* Thread local storage fixes from Eamon Walsh.
+
 2.0.96 2010-06-14
 	* Add const qualifiers to public API where appropriate by KaiGai Kohei.
 

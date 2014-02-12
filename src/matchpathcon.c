@@ -5,6 +5,7 @@
 #include "selinux_internal.h"
 #include "label_internal.h"
 #include "callbacks.h"
+#include <limits.h>
 
 static __thread struct selabel_handle *hnd;
 
@@ -14,6 +15,10 @@ static __thread struct selabel_handle *hnd;
 static __thread char **con_array;
 static __thread int con_array_size;
 static __thread int con_array_used;
+
+static pthread_once_t once = PTHREAD_ONCE_INIT;
+static pthread_key_t destructor_key;
+static int destructor_key_initialized = 0;
 
 static int add_array_elt(char *con)
 {
@@ -282,10 +287,30 @@ void matchpathcon_filespec_destroy(void)
 	fl_head = NULL;
 }
 
+static void matchpathcon_thread_destructor(void __attribute__((unused)) *ptr)
+{
+	matchpathcon_fini();
+}
+
+void __attribute__((destructor)) matchpathcon_lib_destructor(void)
+{
+	if (destructor_key_initialized)
+		__selinux_key_delete(destructor_key);
+}
+
+static void matchpathcon_init_once(void)
+{
+	if (__selinux_key_create(&destructor_key, matchpathcon_thread_destructor) == 0)
+		destructor_key_initialized = 1;
+}
+
 int matchpathcon_init_prefix(const char *path, const char *subset)
 {
 	if (!mycanoncon)
 		mycanoncon = default_canoncon;
+
+	__selinux_once(once, matchpathcon_init_once);
+	__selinux_setspecific(destructor_key, (void *)1);
 
 	options[SELABEL_OPT_SUBSET].type = SELABEL_OPT_SUBSET;
 	options[SELABEL_OPT_SUBSET].value = subset;
@@ -305,20 +330,93 @@ int matchpathcon_init(const char *path)
 
 void matchpathcon_fini(void)
 {
+	free_array_elts();
+
 	if (hnd) {
 		selabel_close(hnd);
 		hnd = NULL;
 	}
 }
 
-int matchpathcon(const char *name, mode_t mode, security_context_t * con)
+/*
+ * We do not want to resolve a symlink to a real path if it is the final
+ * component of the name.  Thus we split the pathname on the last "/" and
+ * determine a real path component of the first portion.  We then have to
+ * copy the last part back on to get the final real path.  Wheww.
+ */
+int realpath_not_final(const char *name, char *resolved_path)
 {
+	char *last_component;
+	char *tmp_path, *p;
+	size_t len = 0;
+	int rc = 0;
+
+	tmp_path = strdup(name);
+	if (!tmp_path) {
+		myprintf("symlink_realpath(%s) strdup() failed: %s\n",
+			name, strerror(errno));
+		rc = -1;
+		goto out;
+	}
+
+	last_component = strrchr(tmp_path, '/');
+
+	if (last_component == tmp_path) {
+		last_component++;
+		p = strcpy(resolved_path, "/");
+	} else if (last_component) {
+		*last_component = '\0';
+		last_component++;
+		p = realpath(tmp_path, resolved_path);
+	} else {
+		last_component = tmp_path;
+		p = realpath("./", resolved_path);
+	}
+
+	if (!p) {
+		myprintf("symlink_realpath(%s) realpath() failed: %s\n",
+			name, strerror(errno));
+		rc = -1;
+		goto out;
+	}
+
+	len = strlen(p);
+	if (len + strlen(last_component) + 2 > PATH_MAX) {
+		myprintf("symlink_realpath(%s) failed: Filename too long \n",
+			name);
+		errno=ENAMETOOLONG;
+		rc = -1;
+		goto out;
+	}
+
+	resolved_path += len;
+	strcpy(resolved_path, "/");
+	resolved_path += 1;
+	strcpy(resolved_path, last_component);
+out:
+	free(tmp_path);
+	return rc;
+}
+
+int matchpathcon(const char *path, mode_t mode, security_context_t * con)
+{
+	char stackpath[PATH_MAX + 1];
+	char *p = NULL;
 	if (!hnd && (matchpathcon_init_prefix(NULL, NULL) < 0))
 			return -1;
 
+	if (S_ISLNK(mode)) {
+		if (!realpath_not_final(path, stackpath))
+			path = stackpath;
+	} else {
+		p = realpath(path, stackpath);
+		if (p)
+			path = p;
+	}
+
 	return notrans ?
-		selabel_lookup_raw(hnd, con, name, mode) :
-		selabel_lookup(hnd, con, name, mode);
+		selabel_lookup_raw(hnd, con, path, mode) :
+		selabel_lookup(hnd, con, path, mode);
 }
 
 int matchpathcon_index(const char *name, mode_t mode, security_context_t * con)
@@ -368,7 +466,7 @@ int selinux_file_context_verify(const char *path, mode_t mode)
 	rc = lgetfilecon_raw(path, &con);
 	if (rc == -1) {
 		if (errno != ENOTSUP)
-			return 1;
+			return -1;
 		else
 			return 0;
 	}
@@ -378,11 +476,18 @@ int selinux_file_context_verify(const char *path, mode_t mode)
 
 	if (selabel_lookup_raw(hnd, &fcontext, path, mode) != 0) {
 		if (errno != ENOENT)
-			rc = 1;
+			rc = -1;
 		else
 			rc = 0;
-	} else
+	} else {
+		/*
+		 * Need to set errno to 0 as it can be set to ENOENT if the
+		 * file_contexts.subs file does not exist (see selabel_open in
+		 * label.c), thus causing confusion if errno is checked on return.
+		 */
+		errno = 0;
 		rc = (selinux_file_context_cmp(fcontext, con) == 0);
+	}
 
 	freecon(con);
 	freecon(fcontext);
@@ -426,9 +531,14 @@ int compat_validate(struct selabel_handle *rec,
 	else {
 		rc = selabel_validate(rec, contexts);
 		if (rc < 0) {
-			COMPAT_LOG(SELINUX_WARNING,
-				    "%s:  line %d has invalid context %s\n",
-				    path, lineno, *ctx);
+			if (lineno) {
+				COMPAT_LOG(SELINUX_WARNING,
+					    "%s: line %d has invalid context %s\n",
+						path, lineno, *ctx);
+			} else {
+				COMPAT_LOG(SELINUX_WARNING,
+					    "%s: has invalid context %s\n", path, *ctx);
+			}
 		}
 	}
 
