@@ -158,15 +158,12 @@ static int nodups_specs(struct saved_data *data, const char *path)
 	for (ii = 0; ii < data->nspec; ii++) {
 		curr_spec = &spec_arr[ii];
 		for (jj = ii + 1; jj < data->nspec; jj++) {
-			if ((!strcmp
-			     (spec_arr[jj].regex_str, curr_spec->regex_str))
+			if ((!strcmp(spec_arr[jj].regex_str, curr_spec->regex_str))
 			    && (!spec_arr[jj].mode || !curr_spec->mode
 				|| spec_arr[jj].mode == curr_spec->mode)) {
 				rc = -1;
 				errno = EINVAL;
-				if (strcmp
-				    (spec_arr[jj].lr.ctx_raw,
-				     curr_spec->lr.ctx_raw)) {
+				if (strcmp(spec_arr[jj].lr.ctx_raw, curr_spec->lr.ctx_raw)) {
 					COMPAT_LOG
 						(SELINUX_ERROR,
 						 "%s: Multiple different specifications for %s  (%s and %s).\n",
@@ -406,6 +403,7 @@ static int init(struct selabel_handle *rec, struct selinux_opt *opts,
 	FILE *homedirfp = NULL;
 	char local_path[PATH_MAX + 1];
 	char homedir_path[PATH_MAX + 1];
+	char subs_file[PATH_MAX + 1];
 	char *line_buf = NULL;
 	size_t line_len = 0;
 	unsigned int lineno, pass, i, j, maxnspec;
@@ -426,6 +424,17 @@ static int init(struct selabel_handle *rec, struct selinux_opt *opts,
 			baseonly = !!opts[n].value;
 			break;
 		}
+
+	/* Process local and distribution substitution files */
+	if (!path) {
+		rec->subs = selabel_subs_init(selinux_file_context_subs_dist_path(), rec->subs);
+		rec->subs = selabel_subs_init(selinux_file_context_subs_path(), rec->subs);
+	} else {
+		snprintf(subs_file, sizeof(subs_file), "%s.subs_dist", path);
+		rec->subs = selabel_subs_init(subs_file, rec->subs);
+		snprintf(subs_file, sizeof(subs_file), "%s.subs", path);
+		rec->subs = selabel_subs_init(subs_file, rec->subs);
+	}
 
 	/* Open the specification file. */
 	if (!path)
@@ -453,6 +462,7 @@ static int init(struct selabel_handle *rec, struct selinux_opt *opts,
 		if (localfp != NULL)
 			__fsetlocking(localfp, FSETLOCKING_BYCALLER);
 	}
+	rec->spec_file = strdup(path);
 
 	/* 
 	 * Perform two passes over the specification file.
@@ -464,37 +474,41 @@ static int init(struct selabel_handle *rec, struct selinux_opt *opts,
 	 */
 	maxnspec = UINT_MAX / sizeof(spec_t);
 	for (pass = 0; pass < 2; pass++) {
-		lineno = 0;
 		data->nspec = 0;
 		data->ncomp = 0;
-		while (getline(&line_buf, &line_len, fp) > 0
-		       && data->nspec < maxnspec) {
-			if (process_line(rec, path, prefix, line_buf,
-					 pass, ++lineno) != 0)
+
+		lineno = 0;
+		while (getline(&line_buf, &line_len, fp) > 0) {
+			if (data->nspec >= maxnspec)
+				break;
+			status = process_line(rec, path, prefix, line_buf, pass, ++lineno);
+			if (status)
 				goto finish;
 		}
-		if (pass == 1) {
+
+		if (pass == 1 && rec->validating) {
 			status = nodups_specs(data, path);
 			if (status)
 				goto finish;
 		}
+
 		lineno = 0;
 		if (homedirfp)
-			while (getline(&line_buf, &line_len, homedirfp) > 0
-			       && data->nspec < maxnspec) {
-				if (process_line
-				    (rec, homedir_path, prefix,
-				     line_buf, pass, ++lineno) != 0)
+			while (getline(&line_buf, &line_len, homedirfp) > 0) {
+				if (data->nspec >= maxnspec)
+					break;
+				status = process_line(rec, homedir_path, prefix, line_buf, pass, ++lineno);
+				if (status)
 					goto finish;
 			}
 
 		lineno = 0;
 		if (localfp)
-			while (getline(&line_buf, &line_len, localfp) > 0
-			       && data->nspec < maxnspec) {
-				if (process_line
-				    (rec, local_path, prefix, line_buf,
-				     pass, ++lineno) != 0)
+			while (getline(&line_buf, &line_len, localfp) > 0) {
+				if (data->nspec >= maxnspec)
+					break;
+				status = process_line(rec, local_path, prefix, line_buf, pass, ++lineno);
+				if (status)
 					goto finish;
 			}
 
@@ -503,10 +517,10 @@ static int init(struct selabel_handle *rec, struct selinux_opt *opts,
 				status = 0;
 				goto finish;
 			}
-			if (NULL == (data->spec_arr =
-				     malloc(sizeof(spec_t) * data->nspec)))
+			data->spec_arr = calloc(data->nspec, sizeof(spec_t));
+			if (!data->spec_arr)
 				goto finish;
-			memset(data->spec_arr, 0, sizeof(spec_t)*data->nspec);
+
 			maxnspec = data->nspec;
 			rewind(fp);
 			if (homedirfp)

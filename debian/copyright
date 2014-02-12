@@ -1,5 +1,5 @@
 This is the Debian packe for libselinux, and it is built from sources obtained from:
-http://www.nsa.gov/selinux/code/download5.cfm.
+http://userspace.selinuxproject.org/trac/wiki/Releases
 
 This package was debianized by Colin Walters <walters@debian.org> on
 Thu,  3 Jul 2003 17:10:57 -0400.
@@ -57,7 +57,7 @@ The Debian specific changes are © 2005, 2006, Manoj Srivastava
 General Public License, version 2.
 
 On Debian GNU/Linux systems, the complete text of the GNU General
-Public License can be found in `/usr/share/common-licenses/GPL-2'. 
+Public License can be found in `/usr/share/common-licenses/GPL-2'.
 
     A copy of the GNU General Public License is also available at
     <URL:http://www.gnu.org/copyleft/gpl.html>.  You may also obtain
@@ -66,4 +66,3 @@ Public License can be found in `/usr/share/common-licenses/GPL-2'.
 
 Manoj Srivastava <srivasta@debian.org>
 arch-tag: d4250e44-a0e0-4ee0-adb9-2bd74f6eeb27
-

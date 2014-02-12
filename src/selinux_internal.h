@@ -3,7 +3,9 @@
 #include "dso.h"
 
 hidden_proto(selinux_mkload_policy)
+    hidden_proto(fini_selinuxmnt)
     hidden_proto(set_selinuxmnt)
+    hidden_proto(selinuxfs_exists)
     hidden_proto(security_disable)
     hidden_proto(security_policyvers)
     hidden_proto(security_load_policy)
@@ -65,6 +67,7 @@ hidden_proto(selinux_mkload_policy)
     hidden_proto(selinux_file_context_path)
     hidden_proto(selinux_file_context_homedir_path)
     hidden_proto(selinux_file_context_local_path)
+    hidden_proto(selinux_file_context_subs_dist_path)
     hidden_proto(selinux_file_context_subs_path)
     hidden_proto(selinux_netfilter_context_path)
     hidden_proto(selinux_homedir_context_path)
@@ -97,6 +100,9 @@ extern int selinux_page_size hidden;
 
 /* Make pthread_once optional */
 #pragma weak pthread_once
+#pragma weak pthread_key_create
+#pragma weak pthread_key_delete
+#pragma weak pthread_setspecific
 
 /* Call handler iff the first call.  */
 #define __selinux_once(ONCE_CONTROL, INIT_FUNCTION)	\
@@ -109,4 +115,18 @@ extern int selinux_page_size hidden;
 		}					\
 	} while (0)
 
+/* Pthread key macros */
+#define __selinux_key_create(KEY, DESTRUCTOR)			\
+	(pthread_key_create != NULL ? pthread_key_create(KEY, DESTRUCTOR) : -1)
 
+#define __selinux_key_delete(KEY)				\
+	do {							\
+		if (pthread_key_delete != NULL)			\
+			pthread_key_delete(KEY);		\
+	} while (0)
+
+#define __selinux_setspecific(KEY, VALUE)			\
+	do {							\
+		if (pthread_setspecific != NULL)		\
+			pthread_setspecific(KEY, VALUE);	\
+	} while (0)

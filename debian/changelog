@@ -1,3 +1,152 @@
+libselinux (2.1.9-5) unstable; urgency=low
+
+  * Team upload.
+  * Do not Conflicts with ruby transitional package, use versionized Breaks
+    instead (Closes: #670058)
+  * debian/ruby.mk: Also build for ruby1.9.1 now that's the default version
+  * debian/gbp.conf: Change default git-buildpackage build-directory
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 10 Jun 2012 08:33:05 +0200
+
+libselinux (2.1.9-4) unstable; urgency=low
+
+  * Team upload.
+  * debian/control: Re-add Conflicts/Provides for libselinux1-dev, the Provides
+    is still used.
+
+ -- Laurent Bigonville <bigon@debian.org>  Wed, 28 Mar 2012 14:03:32 +0200
+
+libselinux (2.1.9-3) unstable; urgency=low
+
+  * Team upload.
+  * debian/control:
+    - Bump debhelper build-dependency to 9
+    - Move libselinux-ruby1.8 to Priority extra as it's a transitional package
+    - Bump Standards-Version to 3.9.3 (no further changes)
+    - Drop really old Conflicts/Replaces
+    - Bump libselinux1-dev dependency on libsepol1-dev
+    - Update Vcs-* fields
+    - Bump libsepol1-dev build-dependency so we are sure libdir path is
+      correct
+    - Put under the Debian SELinux team maintenance
+  * debian/libselinux1.lintian-overrides: Drop unused override
+  * debian/patches/fix-manpages.patch: Fix section of selinuxexeccon.8
+  * debian/patches/allow-libbase-override.patch: Fix .pc file to use multiarch
+    path
+  * debian/patches/python-link: Do not link against python library
+    (Closes: #664291)
+  * Add debian/gbp.conf file
+  * Drop debian/patches/fix_FTBFS.patch: libsepol.pc is now giving libdir path
+  * debian/rules: Append CPPFLAGS hardening flags to CFLAGS
+
+ -- Laurent Bigonville <bigon@debian.org>  Tue, 27 Mar 2012 21:47:29 +0200
+
+libselinux (2.1.9-2) unstable; urgency=low
+
+  * Moved the python libraries out of the multiarch directory because
+    multiarch doesn't seem to work with python.
+
+ -- Russell Coker <russell@coker.com.au>  Tue, 28 Feb 2012 14:19:24 +1100
+
+libselinux (2.1.9-1) unstable; urgency=low
+
+  * New upstream version, lots of man page changes, python related changes,
+    and lots of bug fixes.
+  * Hacked the build to support multiarch, not sure if it does everything
+    that is desired but at least it builds.
+  * Added new libselinux1 symbols realpath_not_final, selabel_subs_init,
+    selinux_check_access, and selinuxfs_exists.
+
+ -- Russell Coker <russell@coker.com.au>  Mon, 20 Feb 2012 17:31:08 +1100
+
+libselinux (2.1.0-4.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * debian/control
+    - remove comment line since it prevents dch execution
+  * debian/patches
+    - add fix_FTBFS.patch to adjust path (Closes: #653680)
+
+ -- Hideki Yamane <henrich@debian.org>  Mon, 02 Jan 2012 18:34:40 +0900
+
+libselinux (2.1.0-4) unstable; urgency=low
+
+  * Put /selinux back in libselinux1
+    Closes: #647035
+
+ -- Russell Coker <russell@coker.com.au>  Mon, 31 Oct 2011 13:50:56 +1100
+
+libselinux (2.1.0-3) unstable; urgency=low
+
+  * Accept Kyle's changes.
+    Closes: #645121
+  * Merge Steve McIntyre's patch for cross compilation.
+    Closes: #630626
+  * Use two paragraphs for long description.
+    Closes: #637369
+
+ -- Russell Coker <russell@coker.com.au>  Fri, 28 Oct 2011 23:17:30 +1100
+
+libselinux (2.1.0-2) UNRELEASED; urgency=low
+
+  * Move manpages for privileged commands "setenforce" and "togglesebool" to
+    section 8 where they belong.
+  * Fix other manpages which refer to "selinuxenabled" and "getenforce" to
+    find them in section 1.
+  * Convert to Debian source format "3.0 (quilt)".  This allows us to break
+    apart the changes-to-upstream into multiple patches with descriptions.
+    - fix-makefile-bugs.patch
+    - fix-manpages.patch
+    - hide-library-destructors.patch
+  * Change "Architecture" to "linux-any" to reflect build requirements.
+  * Completely rewrite Debian packaging to use debhelper.  This has a very
+    positive effect on the build time (97 sec => 64 sec) and dramatically
+    reduces the size of the packaging metadata:
+      46 files changed, 441 insertions(+), 2833 deletions(-)
+    Note that half of the inserted lines are the new broken-out patches.
+  * Comply with new Ruby packaging conventions (using gem2deb/dh_ruby)
+    - Rename ruby package to "ruby-selinux"
+    - Add support for ruby1.9.1
+  * Comply with new Python packaging conventions (use dh_python2)
+
+ -- Kyle Moffett <Kyle.D.Moffett@boeing.com>  Thu, 13 Oct 2011 13:25:54 -0400
+
+libselinux (2.1.0-1) unstable; urgency=low
+
+  * New upstream release
+  * Add symbols fini_selinuxmnt selinux_file_context_subs_dist_path
+    selinux_status_close selinux_status_deny_unknown selinux_status_getenforce
+    selinux_status_open selinux_status_policyload selinux_status_updated
+  * Remove symbol selabelsublist which should never have been exported (it
+    couldn't be used by outside code).
+  * Made myself the maintainer as Manoj has been busy with paid work.
+  * Made it build-depend on the latest libsepol1-dev.
+
+ -- Russell Coker <russell@coker.com.au>  Tue, 30 Aug 2011 14:33:45 +1000
+
+libselinux (2.0.98-1.1) unstable; urgency=low
+
+  * Non-maintainer upload with permission of the maintainer.
+  * Build for multiarch, setting Pre-Depends multiarch-support in our shared
+    lib package.
+  * Always use -n with gzip, to avoid encoding timestamps in the gzip file;
+    this ensures compressed docs and other files are identical across
+    multiple builds, required for multiarch.
+
+ -- Steve Langasek <vorlon@debian.org>  Tue, 21 Jun 2011 07:24:02 +0000
+
+libselinux (2.0.98-1) unstable; urgency=low
+
+  * New upstream release
+    + Turn off default user handling when computing user contexts by Dan Walsh
+    + Thread local storage fixes from Eamon Walsh.
+  * Added myself to the uploaders and changed the source URL.
+  * Made selabelsublist optional in the libselinux1.symbols file, it was
+    supposed to be private and there seems no possibility that anyone could
+    have used it without causing a crash so there seems no harm in removing it.
+
+ -- Russell Coker <russell@coker.com.au>  Thu, 31 Mar 2011 23:14:03 +1100
+
 libselinux (2.0.96-1) unstable; urgency=low
 
   * New upstream release

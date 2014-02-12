@@ -29,6 +29,16 @@ int selabel_db_init(struct selabel_handle *rec,
 /*
  * Labeling internal structures
  */
+struct selabel_sub {
+	char *src;
+	int slen;
+	char *dst;
+	struct selabel_sub *next;
+};
+
+extern struct selabel_sub *selabel_subs_init(const char *path,
+					     struct selabel_sub *list);
+
 struct selabel_lookup_rec {
 	security_context_t ctx_raw;
 	security_context_t ctx_trans;
@@ -48,6 +58,15 @@ struct selabel_handle {
 
 	/* supports backend-specific state information */
 	void *data;
+
+	/*
+	 * The main spec file used. Note for file contexts the local and/or
+	 * homedirs could also have been used to resolve a context.
+	 */
+	char *spec_file;
+
+	/* substitution support */
+	struct selabel_sub *subs;
 };
 
 /*

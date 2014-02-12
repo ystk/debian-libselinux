@@ -4,10 +4,14 @@
 #include <getopt.h>
 #include <errno.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/errno.h>
 #include <selinux/selinux.h>
+#include <limits.h>
+#include <stdlib.h>
+
 
 void usage(const char *progname)
 {
@@ -103,48 +107,53 @@ int main(int argc, char **argv)
 		}
 	}
 	for (i = optind; i < argc; i++) {
-		int mode = 0;
+		int rc, mode = 0;
 		struct stat buf;
-		int len = strlen(argv[i]);
-		if (len > 1  && argv[i][len - 1 ] == '/') {
-			argv[i][len - 1 ] = '\0';
-		}
+		char *path = argv[i];
+		int len = strlen(path);
+		if (len > 1  && path[len - 1 ] == '/')
+			path[len - 1 ] = '\0';
 
-		if (lstat(argv[i], &buf) == 0)
+		if (lstat(path, &buf) == 0)
 			mode = buf.st_mode;
 
 		if (verify) {
+			rc = selinux_file_context_verify(path, mode);
+
 			if (quiet) {
-				if (selinux_file_context_verify(argv[i], mode))
+				if (rc == 1)
 					continue;
 				else
 					exit(1);
 			}
-			if (selinux_file_context_verify(argv[i], mode)) {
-				printf("%s verified.\n", argv[i]);
+
+			if (rc == -1) {
+				printf("%s error: %s\n", path, strerror(errno));
+				exit(1);
+			} else if (rc == 1) {
+				printf("%s verified.\n", path);
 			} else {
 				security_context_t con;
-				int rc;
 				error = 1;
 				if (notrans)
-					rc = lgetfilecon_raw(argv[i], &con);
+					rc = lgetfilecon_raw(path, &con);
 				else
-					rc = lgetfilecon(argv[i], &con);
+					rc = lgetfilecon(path, &con);
 
 				if (rc >= 0) {
 					printf("%s has context %s, should be ",
-					       argv[i], con);
-					printmatchpathcon(argv[i], 0, mode);
+					       path, con);
+					printmatchpathcon(path, 0, mode);
 					freecon(con);
 				} else {
 					printf
 					    ("actual context unknown: %s, should be ",
 					     strerror(errno));
-					printmatchpathcon(argv[i], 0, mode);
+					printmatchpathcon(path, 0, mode);
 				}
 			}
 		} else {
-			error |= printmatchpathcon(argv[i], header, mode);
+			error |= printmatchpathcon(path, header, mode);
 		}
 	}
 	matchpathcon_fini();

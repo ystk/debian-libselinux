@@ -37,6 +37,7 @@ libselinux.so.1 libselinux1 #MINVER#
  context_user_get@Base 1.32
  context_user_set@Base 1.32
  fgetfilecon@Base 1.32
+ fini_selinuxmnt@Base 2.1.0
  fgetfilecon_raw@Base 1.32
  flush_class_cache@Base 2.0.65
  freecon@Base 1.32
@@ -96,6 +97,7 @@ libselinux.so.1 libselinux1 #MINVER#
  obj_class_compat@Base 2.0.65
  print_access_vector@Base 1.32
  query_user_context@Base 1.32
+ realpath_not_final@Base 2.1.9
  rpm_execcon@Base 1.32
  security_av_perm_to_string@Base 2.0.15
  security_av_string@Base 2.0.15
@@ -136,9 +138,10 @@ libselinux.so.1 libselinux1 #MINVER#
  selabel_lookup_raw@Base 2.0.65
  selabel_open@Base 2.0.65
  selabel_stats@Base 2.0.65
- selabelsublist@Base 2.0.82
+ selabel_subs_init@Base 2.1.9
  selinux_binary_policy_path@Base 1.32
  selinux_booleans_path@Base 1.32
+ selinux_check_access@Base 2.1.9
  selinux_check_passwd_access@Base 1.32
  selinux_check_securetty_context@Base 2.0.15
  selinux_colors_path@Base 2.0.82
@@ -151,6 +154,7 @@ libselinux.so.1 libselinux1 #MINVER#
  selinux_file_context_homedir_path@Base 1.32
  selinux_file_context_local_path@Base 1.32
  selinux_file_context_path@Base 1.32
+ selinux_file_context_subs_dist_path@Base 2.1.0
  selinux_file_context_subs_path@Base 2.0.82
  selinux_file_context_verify@Base 1.32
  selinux_get_callback@Base 2.0.65
@@ -173,6 +177,12 @@ libselinux.so.1 libselinux1 #MINVER#
  selinux_sepgsql_context_path@Base 2.0.94
  selinux_set_callback@Base 2.0.65
  selinux_set_mapping@Base 2.0.65
+ selinux_status_close@Base 2.1.0
+ selinux_status_deny_unknown@Base 2.1.0
+ selinux_status_getenforce@Base 2.1.0
+ selinux_status_open@Base 2.1.0
+ selinux_status_policyload@Base 2.1.0
+ selinux_status_updated@Base 2.1.0
  selinux_trans_to_raw_context@Base 1.32
  selinux_translations_path@Base 1.32
  selinux_user_contexts_path@Base 1.32
@@ -181,6 +191,7 @@ libselinux.so.1 libselinux1 #MINVER#
  selinux_virtual_domain_context_path@Base 2.0.82
  selinux_virtual_image_context_path@Base 2.0.82
  selinux_x_context_path@Base 2.0.65
+ selinuxfs_exists@Base 2.1.9
  set_matchpathcon_canoncon@Base 1.32
  set_matchpathcon_flags@Base 1.32
  set_matchpathcon_invalidcon@Base 1.32

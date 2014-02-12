@@ -1,3 +1,8 @@
+/* Workaround for http://bugs.python.org/issue4835 */
+#ifndef SIZEOF_SOCKET_T
+#define SIZEOF_SOCKET_T SIZEOF_INT
+#endif
+
 #include <Python.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -230,6 +235,7 @@ static int __policy_init(const char *init_path)
 	avc = calloc(sizeof(struct avc_t), 1);
 	if (!avc) {
 		PyErr_SetString( PyExc_MemoryError, "Out of memory\n");
+		fclose(fp);
 		return 1;
 	}
 
@@ -255,6 +261,8 @@ static int __policy_init(const char *init_path)
 	fclose(fp);
 	sepol_set_policydb(&avc->policydb->p);
 	avc->handle = sepol_handle_create();
+	/* Turn off messages */
+	sepol_msg_set_callback(avc->handle, NULL, NULL);
 
 	rc = sepol_bool_count(avc->handle,
 			      avc->policydb, &cnt);
@@ -287,8 +295,9 @@ static int __policy_init(const char *init_path)
 static PyObject *init(PyObject *self __attribute__((unused)), PyObject *args) {
   int result;
   char *init_path=NULL;
-  if (PyArg_ParseTuple(args,(char *)"|s:policy_init",&init_path)) 
-	  result = __policy_init(init_path);
+  if (!PyArg_ParseTuple(args,(char *)"|s:policy_init",&init_path))
+    return NULL;
+  result = __policy_init(init_path);
   return Py_BuildValue("i", result);
 }
 
@@ -353,7 +362,11 @@ static PyObject *analyze(PyObject *self __attribute__((unused)) , PyObject *args
 		strObj = PyList_GetItem(listObj, i); /* Can't fail */
 		
 		/* make it a string */
+#if PY_MAJOR_VERSION >= 3
+		permstr = _PyUnicode_AsString( strObj );
+#else
 		permstr = PyString_AsString( strObj );
+#endif
 		
 		perm = string_to_av_perm(tclass, permstr);
 		if (!perm) {
@@ -423,10 +436,39 @@ static PyMethodDef audit2whyMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#if PY_MAJOR_VERSION >= 3
+/* Module-initialization logic specific to Python 3 */
+struct module_state {
+	/* empty for now */
+};
+static struct PyModuleDef moduledef = {
+	PyModuleDef_HEAD_INIT,
+	"audit2why",
+	NULL,
+	sizeof(struct module_state),
+	audit2whyMethods,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
+PyMODINIT_FUNC
+PyInit_audit2why(void)
+#else
 PyMODINIT_FUNC
 initaudit2why(void)
+#endif
 {
-	PyObject *m = Py_InitModule("audit2why", audit2whyMethods);
+	PyObject *m;
+#if PY_MAJOR_VERSION >= 3
+	m = PyModule_Create(&moduledef);
+	if (m == NULL) {
+		return NULL;
+	}
+#else
+	m  = Py_InitModule("audit2why", audit2whyMethods);
+#endif
 	PyModule_AddIntConstant(m,"UNKNOWN", UNKNOWN);
 	PyModule_AddIntConstant(m,"BADSCON", BADSCON);
 	PyModule_AddIntConstant(m,"BADTCON", BADTCON);
@@ -440,4 +482,8 @@ initaudit2why(void)
 	PyModule_AddIntConstant(m,"BOOLEAN", BOOLEAN);
 	PyModule_AddIntConstant(m,"CONSTRAINT", CONSTRAINT);
 	PyModule_AddIntConstant(m,"RBAC", RBAC);
+
+#if PY_MAJOR_VERSION >= 3
+	return m;
+#endif
 }

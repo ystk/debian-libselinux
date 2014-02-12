@@ -138,6 +138,8 @@ process_line(const char *path, char *line_buf, unsigned int line_num,
 		spec->type = SELABEL_DB_BLOB;
 	else if (!strcmp(type, "db_tuple"))
 		spec->type = SELABEL_DB_TUPLE;
+	else if (!strcmp(type, "db_language"))
+		spec->type = SELABEL_DB_LANGUAGE;
 	else {
 		selinux_log(SELINUX_WARNING,
 			    "%s:  line %d has invalid object type %s\n",
@@ -228,7 +230,7 @@ db_stats(struct selabel_handle *rec)
  * selabel_open() handler
  */
 static catalog_t *
-db_init(struct selinux_opt *opts, unsigned nopts)
+db_init(struct selinux_opt *opts, unsigned nopts, struct selabel_handle *rec)
 {
 	catalog_t      *catalog;
 	FILE	       *filp;
@@ -273,6 +275,7 @@ db_init(struct selinux_opt *opts, unsigned nopts)
 		free(catalog);
 		return NULL;
 	}
+	rec->spec_file = strdup(path);
 
 	/*
 	 * Parse for each lines
@@ -330,7 +333,7 @@ int selabel_db_init(struct selabel_handle *rec,
 	rec->func_close = &db_close;
 	rec->func_lookup = &db_lookup;
 	rec->func_stats = &db_stats;
-	rec->data = db_init(opts, nopts);
+	rec->data = db_init(opts, nopts, rec);
 
 	return !rec->data ? -1 : 0;
 }
