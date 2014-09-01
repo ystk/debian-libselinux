@@ -1,3 +1,136 @@
+libselinux (2.3-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream release
+    - debian/control: Bump {build-}dependencies to match new release
+    - debian/libselinux1.symbols: Add new setexecfilecon() function
+  * debian/ruby.mk: Rework the makefile, it should handle changes in the
+    supported ruby versions by binNMU now (Closes: #747683)
+  * Add Built-Using field for python-selinux as audit2why.so is statically
+    linking against libsepol
+
+ -- Laurent Bigonville <bigon@debian.org>  Wed, 14 May 2014 20:13:57 +0200
+
+libselinux (2.2.2-2) unstable; urgency=medium
+
+  * Team upload.
+  [ Laurent Bigonville ]
+  * debian/rules: Do not require ruby or python dh helpers when bootstrapping
+    thanks to Daniel Schepler <dschepler@gmail.com> (Closes: #738148)
+
+  [ Hideki Yamane ]
+  * debian/{ruby.mk,ruby-selinux.install}
+    - drop related to ruby1.9.1 and add ruby2.1.0 instead (Closes: #746024)
+
+ -- Laurent Bigonville <bigon@debian.org>  Fri, 02 May 2014 01:47:58 +0200
+
+libselinux (2.2.2-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream release
+  * debian/control: Mark -dev package as Multi-arch: same. (Closes: #732098)
+  * debian/control: Bump Standards-Version to 3.9.5 (no further changes)
+  * debian/rules: Fix cross build, no need for a different prefix.
+
+ -- Laurent Bigonville <bigon@debian.org>  Sat, 11 Jan 2014 18:44:53 +0100
+
+libselinux (2.2.1-1) unstable; urgency=low
+
+  * Team upload.
+  * New upstream release
+  * Drop debian/patches/link_pthread.patch: Upstream disagreed with this
+    solution, this will unfortunately require to rebuild some of the
+    rdependencies
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 10 Nov 2013 20:33:34 +0100
+
+libselinux (2.2-2) unstable; urgency=low
+
+  * Team upload.
+  * debian/patches/link_pthread.patch: Explicitly link against -lpthread as
+    libselinux is using it internally, without this ld.so is asserting in a
+    weird way for some executables (Closes: #728529)
+
+ -- Laurent Bigonville <bigon@debian.org>  Sat, 02 Nov 2013 22:42:37 +0100
+
+libselinux (2.2-1) unstable; urgency=low
+
+  * Team upload.
+  * New upstream release
+    - Fix avc_has_perm() returns -1 even when SELinux is permissive.
+      (Closes: #727766)
+    - debian/control: Bump {build-}dependencies to match new release
+    - debian/patches/fix-makefile-bugs.patch: Refreshed
+    - Drop debian/patches/fix-manpages.patch: Not needed anymore
+    - debian/patches/fix-cross-compile.patch: Refreshed
+    - Drop debian/patches/allow-libbase-override.patch: Merged upstream
+    - Drop debian/patches/fix_pcre_link.patch: Fixed upstream
+    - Drop debian/patches/add_missing_private_pc.patch: Fixed upstream
+    - Adjust debian/libselinux1.symbols: Add new symbols
+  * debian/rules: getenforce and selinuxenabled executable are installed in
+    /usr/sbin, keep their manpages in section 8
+
+ -- Laurent Bigonville <bigon@debian.org>  Fri, 01 Nov 2013 17:02:00 +0100
+
+libselinux (2.1.13-3) unstable; urgency=low
+
+  * Team upload.
+  * debian/ruby.mk: Stop building binding for ruby 1.8 and start building it
+    for ruby 2.0 (Closes: #720247)
+  * debian/control: Bump Standards-Version to 3.9.4 (no further changes)
+  * debian/control: Use canonical URL for VCS-Git field
+  * debian/control, debian/rules: Drop libselinux-ruby1.8 transitional package
+
+ -- Laurent Bigonville <bigon@debian.org>  Wed, 02 Oct 2013 18:32:57 +0200
+
+libselinux (2.1.13-2) unstable; urgency=low
+
+  * Team upload.
+  * debian/patches/add_missing_private_pc.patch: Add missing dependencies to
+    the .pc file. This fix FTBFS of pkg that link statically against us
+    (Closes: #708435)
+  * debian/control: Add Dependency against libpcre3-dev on libselinux1-dev
+    package
+
+ -- Laurent Bigonville <bigon@debian.org>  Mon, 20 May 2013 17:36:35 +0200
+
+libselinux (2.1.13-1) unstable; urgency=low
+
+  * Team upload.
+  * New upstream release
+    - debian/control: Bump libsepol1-dev (build-)dependency to match the release
+    - Refresh the patches
+    - debian/libselinux1.symbols: Add new symbol
+  * debian/control: Add Homepage field
+
+ -- Laurent Bigonville <bigon@debian.org>  Thu, 09 May 2013 18:55:50 +0200
+
+libselinux (2.1.12-1) experimental; urgency=low
+
+  * Team upload.
+  * New upstream release
+    - Drop debian/patches/python-include and fix debian/python.mk instead
+    - Drop debian/patches/python-link, applied upstream
+    - Drop debian/patches/hide-library-destructors.patch, applied upstream
+    - Refresh debian/patches/allow-libbase-override.patch
+    - Drop debian/patches/add-includededir this patch was actually reverting
+      debian/patches/fix-cross-compile.patch
+    - Refresh debian/patches/fix-cross-compile.patch
+    - Bump libsepol1 {build-}dependency to match the new released version
+    - Add libpcre3-dev build-dependency
+    - Add debian/patches/fix_pcre_link.patch: Fix LDFLAGS and libpcre linking
+    - Refresh debian/patches/fix-makefile-bugs.patch
+    - Fix debian/ruby.mk: Add missing -I to RUBYINC variabale
+    - Adjust debian/libselinux1.symbols symbols file, dropped unused symbol:
+      flush_class_cache
+    - debian/selinux-utils.install: matchpathcon exec has moved to /usr/sbin
+  * Update debian/watch file
+  * debian/gbp.conf: change the debian-branch to "debian" instead of "upstream"
+  * Drop /selinux directory, selinuxfs should now be mounted in
+    /sys/fs/selinux (Closes: #658070)
+
+ -- Laurent Bigonville <bigon@debian.org>  Tue, 25 Sep 2012 23:32:29 +0200
+
 libselinux (2.1.9-5) unstable; urgency=low
 
   * Team upload.

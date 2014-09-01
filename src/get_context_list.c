@@ -12,10 +12,10 @@
 
 int get_default_context_with_role(const char *user,
 				  const char *role,
-				  security_context_t fromcon,
-				  security_context_t * newcon)
+				  char * fromcon,
+				  char ** newcon)
 {
-	security_context_t *conary;
+	char **conary;
 	char **ptr;
 	context_t con;
 	const char *role2;
@@ -56,8 +56,8 @@ hidden_def(get_default_context_with_role)
 int get_default_context_with_rolelevel(const char *user,
 				       const char *role,
 				       const char *level,
-				       security_context_t fromcon,
-				       security_context_t * newcon)
+				       char * fromcon,
+				       char ** newcon)
 {
 
 	int rc = 0;
@@ -98,9 +98,9 @@ int get_default_context_with_rolelevel(const char *user,
 }
 
 int get_default_context(const char *user,
-			security_context_t fromcon, security_context_t * newcon)
+			char * fromcon, char ** newcon)
 {
-	security_context_t *conary;
+	char **conary;
 	int rc;
 
 	rc = get_ordered_context_list(user, fromcon, &conary);
@@ -114,7 +114,7 @@ int get_default_context(const char *user,
 	return 0;
 }
 
-static int find_partialcon(security_context_t * list,
+static int find_partialcon(char ** list,
 			   unsigned int nreach, char *part)
 {
 	const char *conrole, *contype;
@@ -155,8 +155,8 @@ static int find_partialcon(security_context_t * list,
 }
 
 static int get_context_order(FILE * fp,
-			     security_context_t fromcon,
-			     security_context_t * reachable,
+			     char * fromcon,
+			     char ** reachable,
 			     unsigned int nreach,
 			     unsigned int *ordering, unsigned int *nordered)
 {
@@ -268,7 +268,7 @@ static int get_context_order(FILE * fp,
 	return rc;
 }
 
-static int get_failsafe_context(const char *user, security_context_t * newcon)
+static int get_failsafe_context(const char *user, char ** newcon)
 {
 	FILE *fp;
 	char buf[255], *ptr;
@@ -314,7 +314,7 @@ static int get_failsafe_context(const char *user, security_context_t * newcon)
 }
 
 struct context_order {
-	security_context_t con;
+	char * con;
 	unsigned int order;
 };
 
@@ -330,8 +330,8 @@ static int order_compare(const void *A, const void *B)
 
 int get_ordered_context_list_with_level(const char *user,
 					const char *level,
-					security_context_t fromcon,
-					security_context_t ** list)
+					char * fromcon,
+					char *** list)
 {
 	int rc;
 	int freefrom = 0;
@@ -373,10 +373,10 @@ hidden_def(get_ordered_context_list_with_level)
 
 int get_default_context_with_level(const char *user,
 				   const char *level,
-				   security_context_t fromcon,
-				   security_context_t * newcon)
+				   char * fromcon,
+				   char ** newcon)
 {
-	security_context_t *conary;
+	char **conary;
 	int rc;
 
 	rc = get_ordered_context_list_with_level(user, level, fromcon, &conary);
@@ -391,10 +391,10 @@ int get_default_context_with_level(const char *user,
 }
 
 int get_ordered_context_list(const char *user,
-			     security_context_t fromcon,
-			     security_context_t ** list)
+			     char * fromcon,
+			     char *** list)
 {
-	security_context_t *reachable = NULL;
+	char **reachable = NULL;
 	unsigned int *ordering = NULL;
 	struct context_order *co = NULL;
 	char **ptr;
@@ -426,7 +426,7 @@ int get_ordered_context_list(const char *user,
 	/* Initialize ordering array. */
 	ordering = malloc(nreach * sizeof(unsigned int));
 	if (!ordering)
-		goto oom_order;
+		goto failsafe;
 	for (i = 0; i < nreach; i++)
 		ordering[i] = nreach;
 
@@ -435,7 +435,7 @@ int get_ordered_context_list(const char *user,
 	fname_len = strlen(user_contexts_path) + strlen(user) + 2;
 	fname = malloc(fname_len);
 	if (!fname)
-		goto oom_order;
+		goto failsafe;
 	snprintf(fname, fname_len, "%s%s", user_contexts_path, user);
 	fp = fopen(fname, "r");
 	if (fp) {
@@ -463,37 +463,38 @@ int get_ordered_context_list(const char *user,
 				__FUNCTION__, selinux_default_context_path());
 			/* Fall through */
 		}
+		rc = 0;
 	}
+
+	if (!nordered)
+		goto failsafe;
 
 	/* Apply the ordering. */
-	if (nordered) {
-		co = malloc(nreach * sizeof(struct context_order));
-		if (!co)
-			goto oom_order;
-		for (i = 0; i < nreach; i++) {
-			co[i].con = reachable[i];
-			co[i].order = ordering[i];
-		}
-		qsort(co, nreach, sizeof(struct context_order), order_compare);
-		for (i = 0; i < nreach; i++)
-			reachable[i] = co[i].con;
-		free(co);
+	co = malloc(nreach * sizeof(struct context_order));
+	if (!co)
+		goto failsafe;
+	for (i = 0; i < nreach; i++) {
+		co[i].con = reachable[i];
+		co[i].order = ordering[i];
 	}
+	qsort(co, nreach, sizeof(struct context_order), order_compare);
+	for (i = 0; i < nreach; i++)
+		reachable[i] = co[i].con;
+	free(co);
 
-	/* Return the ordered list. 
-	   If we successfully ordered it, then only report the ordered entries
-	   to the caller.  Otherwise, fall back to the entire reachable list. */
-	if (nordered && nordered < nreach) {
+	/* Only report the ordered entries to the caller. */
+	if (nordered <= nreach) {
 		for (i = nordered; i < nreach; i++)
 			free(reachable[i]);
 		reachable[nordered] = NULL;
 		rc = nordered;
-	} else {
-		rc = nreach;
 	}
 
       out:
-	*list = reachable;
+	if (rc > 0)
+		*list = reachable;
+	else
+		freeconary(reachable);
 
 	free(ordering);
 	if (freefrom)
@@ -506,7 +507,7 @@ int get_ordered_context_list(const char *user,
 	   the "failsafe" context to at least permit root login
 	   for emergency recovery if possible. */
 	freeconary(reachable);
-	reachable = malloc(2 * sizeof(security_context_t));
+	reachable = malloc(2 * sizeof(char *));
 	if (!reachable) {
 		rc = -1;
 		goto out;
@@ -519,14 +520,6 @@ int get_ordered_context_list(const char *user,
 		goto out;
 	}
 	rc = 1;			/* one context in the list */
-	goto out;
-
-      oom_order:
-	/* Unable to order context list due to OOM condition.
-	   Fall back to unordered reachable context list. */
-	fprintf(stderr, "%s:  out of memory, unable to order list\n",
-		__FUNCTION__);
-	rc = nreach;
 	goto out;
 }
 

@@ -9,6 +9,7 @@
  */
 #include <selinux/avc.h>
 #include "selinux_internal.h"
+#include <assert.h>
 #include "avc_sidtab.h"
 #include "avc_internal.h"
 
@@ -66,19 +67,22 @@ static inline int avc_hash(security_id_t ssid,
 	    & (AVC_CACHE_SLOTS - 1);
 }
 
-int avc_context_to_sid_raw(const security_context_t ctx, security_id_t * sid)
+int avc_context_to_sid_raw(const char * ctx, security_id_t * sid)
 {
 	int rc;
+	/* avc_init needs to be called before this function */
+	assert(avc_running);
+
 	avc_get_lock(avc_lock);
 	rc = sidtab_context_to_sid(&avc_sidtab, ctx, sid);
 	avc_release_lock(avc_lock);
 	return rc;
 }
 
-int avc_context_to_sid(const security_context_t ctx, security_id_t * sid)
+int avc_context_to_sid(const char * ctx, security_id_t * sid)
 {
 	int ret;
-	security_context_t rctx;
+	char * rctx;
 
 	if (selinux_trans_to_raw_context(ctx, &rctx))
 		return -1;
@@ -90,7 +94,7 @@ int avc_context_to_sid(const security_context_t ctx, security_id_t * sid)
 	return ret;
 }
 
-int avc_sid_to_context_raw(security_id_t sid, security_context_t * ctx)
+int avc_sid_to_context_raw(security_id_t sid, char ** ctx)
 {
 	int rc;
 	*ctx = NULL;
@@ -101,10 +105,10 @@ int avc_sid_to_context_raw(security_id_t sid, security_context_t * ctx)
 	return rc;
 }
 
-int avc_sid_to_context(security_id_t sid, security_context_t * ctx)
+int avc_sid_to_context(security_id_t sid, char ** ctx)
 {
 	int ret;
-	security_context_t rctx;
+	char * rctx;
 
 	ret = avc_sid_to_context_raw(sid, &rctx);
 
@@ -129,7 +133,7 @@ int sidput(security_id_t sid __attribute__((unused)))
 int avc_get_initial_sid(const char * name, security_id_t * sid)
 {
 	int rc;
-	security_context_t con;
+	char * con;
 
 	rc = security_get_initial_context_raw(name, &con);
 	if (rc < 0)
@@ -249,6 +253,8 @@ void avc_cache_stats(struct avc_cache_stats *p)
 
 void avc_sid_stats(void)
 {
+	/* avc_init needs to be called before this function */
+	assert(avc_running);
 	avc_get_lock(avc_log_lock);
 	avc_get_lock(avc_lock);
 	sidtab_sid_stats(&avc_sidtab, avc_audit_buf, AVC_AUDIT_BUFSIZE);
@@ -330,11 +336,7 @@ static inline struct avc_node *avc_reclaim_node(void)
 
 static inline void avc_clear_avc_entry(struct avc_entry *ae)
 {
-	ae->ssid = ae->tsid = ae->create_sid = NULL;
-	ae->tclass = 0;
-	ae->avd.allowed = ae->avd.decided = 0;
-	ae->avd.auditallow = ae->avd.auditdeny = 0;
-	ae->used = 0;
+	memset(ae, 0, sizeof(*ae));
 }
 
 static inline struct avc_node *avc_claim_node(security_id_t ssid,
@@ -482,11 +484,7 @@ static int avc_insert(security_id_t ssid, security_id_t tsid,
 		goto out;
 	}
 
-	node->ae.avd.allowed = ae->avd.allowed;
-	node->ae.avd.decided = ae->avd.decided;
-	node->ae.avd.auditallow = ae->avd.auditallow;
-	node->ae.avd.auditdeny = ae->avd.auditdeny;
-	node->ae.avd.seqno = ae->avd.seqno;
+	memcpy(&node->ae.avd, &ae->avd, sizeof(ae->avd));
 	aeref->ae = &node->ae;
       out:
 	return rc;
@@ -548,6 +546,8 @@ void avc_destroy(void)
 	struct avc_callback_node *c;
 	struct avc_node *node, *tmp;
 	int i;
+	/* avc_init needs to be called before this function */
+	assert(avc_running);
 
 	avc_get_lock(avc_lock);
 
@@ -731,6 +731,16 @@ void avc_audit(security_id_t ssid, security_id_t tsid,
 
 hidden_def(avc_audit)
 
+
+static void avd_init(struct av_decision *avd)
+{
+	avd->allowed = 0;
+	avd->auditallow = 0;
+	avd->auditdeny = 0xffffffff;
+	avd->seqno = avc_cache.latest_notif;
+	avd->flags = 0;
+}
+
 int avc_has_perm_noaudit(security_id_t ssid,
 			 security_id_t tsid,
 			 security_class_t tclass,
@@ -742,6 +752,9 @@ int avc_has_perm_noaudit(security_id_t ssid,
 	struct avc_entry entry;
 	access_vector_t denied;
 	struct avc_entry_ref ref;
+
+	if (avd)
+		avd_init(avd);
 
 	if (!avc_using_threads && !avc_app_main_loop) {
 		(void)avc_netlink_check_nb();
@@ -775,6 +788,10 @@ int avc_has_perm_noaudit(security_id_t ssid,
 			rc = security_compute_av_flags_raw(ssid->ctx, tsid->ctx,
 							   tclass, requested,
 							   &entry.avd);
+			if (rc && errno == EINVAL && !avc_enforcing) {
+				rc = errno = 0;
+				goto out;
+			}
 			if (rc)
 				goto out;
 			rc = avc_insert(ssid, tsid, tclass, &entry, aeref);
@@ -813,8 +830,6 @@ int avc_has_perm(security_id_t ssid, security_id_t tsid,
 	struct av_decision avd;
 	int errsave, rc;
 
-	memset(&avd, 0, sizeof(avd));
-
 	rc = avc_has_perm_noaudit(ssid, tsid, tclass, requested, aeref, &avd);
 	errsave = errno;
 	avc_audit(ssid, tsid, tclass, requested, &avd, rc, auditdata);
@@ -828,7 +843,7 @@ int avc_compute_create(security_id_t ssid,  security_id_t tsid,
 	int rc;
 	struct avc_entry_ref aeref;
 	struct avc_entry entry;
-	security_context_t ctx;
+	char * ctx;
 
 	*newsid = NULL;
 	avc_entry_ref_init(&aeref);
@@ -876,8 +891,10 @@ int avc_compute_member(security_id_t ssid,  security_id_t tsid,
 		       security_class_t tclass, security_id_t *newsid)
 {
 	int rc;
-	security_context_t ctx = NULL;
+	char * ctx = NULL;
 	*newsid = NULL;
+	/* avc_init needs to be called before this function */
+	assert(avc_running);
 	avc_get_lock(avc_lock);
 
 	rc = security_compute_member_raw(ssid->ctx, tsid->ctx, tclass, &ctx);

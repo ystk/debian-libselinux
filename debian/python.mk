@@ -11,6 +11,7 @@ all: $(PYTHON_VERSIONS)
 ## SELinux does not have a very nice build process
 extra_python_args  = PYLIBVER=$@
 extra_python_args += PYTHONLIBDIR=-L$(DESTDIR)/usr/lib/$@
+extra_python_args += PYINC=-I/usr/include/$@
 
 ## How to build and install each individually-versioned copy
 $(PYTHON_VERSIONS): python%:

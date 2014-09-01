@@ -8,14 +8,14 @@ Author: Kyle Moffett <Kyle.D.Moffett@boeing.com>
 Forwarded: no
 Last-Update: 2011-10-13
 
---- libselinux-2.1.0.orig/src/Makefile
-+++ libselinux-2.1.0/src/Makefile
-@@ -47,7 +47,7 @@
- OBJS= $(patsubst %.c,%.o,$(SRCS))
- LOBJS= $(patsubst %.c,%.lo,$(SRCS))
- CFLAGS ?= -Werror -Wall -W -Wundef -Wshadow -Wmissing-noreturn -Wmissing-format-attribute
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -75,7 +75,7 @@ CFLAGS ?= -O -Wall -W -Wundef -Wformat-y
+           -fipa-pure-const -Wno-suggest-attribute=pure -Wno-suggest-attribute=const \
+           -Werror -Wno-aggregate-return -Wno-redundant-decls
+ 
 -override CFLAGS += -I../include -I$(INCLUDEDIR) -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(EMFLAGS)
 +override CFLAGS += -I../include -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(EMFLAGS)
- RANLIB=ranlib
  
- ARCH := $(patsubst i%86,i386,$(shell uname -m))
+ SWIG_CFLAGS += -Wno-error -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-parameter \
+ 		-Wno-shadow -Wno-uninitialized -Wno-missing-prototypes -Wno-missing-declarations

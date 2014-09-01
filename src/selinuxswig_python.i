@@ -10,6 +10,10 @@
 
 import shutil, os, stat
 
+DISABLED = -1
+PERMISSIVE = 0
+ENFORCING = 1
+
 def restorecon(path, recursive=False):
     """ Restore SELinux context on a given path """
 
@@ -74,8 +78,12 @@ def install(src, dest):
   $1 = &temp;
 }
 
+%typemap(in, numinputs=0) void *(char *temp=NULL) {
+	$1 = temp;
+}
+
 /* Makes security_compute_user() return a Python list of contexts */
-%typemap(argout) (security_context_t **con) {
+%typemap(argout) (char ***con) {
 	PyObject* plist;
 	int i, len = 0;
 	
@@ -96,7 +104,7 @@ def install(src, dest):
 }
 
 /* Makes functions in get_context_list.h return a Python list of contexts */
-%typemap(argout) (security_context_t **list) {
+%typemap(argout) (char ***list) {
 	PyObject* plist;
 	int i;
 	
@@ -114,11 +122,11 @@ def install(src, dest):
 	$result = plist;
 }
 
-%typemap(in,noblock=1,numinputs=0) security_context_t * (security_context_t temp = 0) {
+%typemap(in,noblock=1,numinputs=0) char ** (char * temp = 0) {
 	$1 = &temp;
 }
-%typemap(freearg,match="in") security_context_t * "";
-%typemap(argout,noblock=1) security_context_t * {
+%typemap(freearg,match="in") char ** "";
+%typemap(argout,noblock=1) char ** {
 	if (*$1) {
 		%append_output(SWIG_FromCharPtr(*$1));
 		freecon(*$1);

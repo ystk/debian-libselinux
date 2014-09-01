@@ -19,7 +19,7 @@ extern "C" {
  * SID format and operations
  */
 struct security_id {
-	security_context_t ctx;
+	char * ctx;
 	unsigned int refcnt;
 };
 typedef struct security_id *security_id_t;
@@ -37,8 +37,8 @@ typedef struct security_id *security_id_t;
  * failure, with @errno set to %ENOMEM if insufficient memory was
  * available to make the copy, or %EINVAL if the input SID is invalid.
  */
-int avc_sid_to_context(security_id_t sid, security_context_t * ctx);
-int avc_sid_to_context_raw(security_id_t sid, security_context_t * ctx);
+int avc_sid_to_context(security_id_t sid, char ** ctx);
+int avc_sid_to_context_raw(security_id_t sid, char ** ctx);
 
 /**
  * avc_context_to_sid - get SID for context.
@@ -51,8 +51,8 @@ int avc_sid_to_context_raw(security_id_t sid, security_context_t * ctx);
  * to the SID structure into the memory referenced by @sid, 
  * returning %0 on success or -%1 on error with @errno set.  
  */
-int avc_context_to_sid(const security_context_t ctx, security_id_t * sid);
-int avc_context_to_sid_raw(const security_context_t ctx, security_id_t * sid);
+int avc_context_to_sid(const char * ctx, security_id_t * sid);
+int avc_context_to_sid_raw(const char * ctx, security_id_t * sid);
 
 /**
  * sidget - increment SID reference counter.
@@ -130,7 +130,11 @@ struct avc_memory_callback {
 
 struct avc_log_callback {
 	/* log the printf-style format and arguments. */
-	void (*func_log) (const char *fmt, ...);
+	void
+#ifdef __GNUC__
+__attribute__ ((format(printf, 1, 2)))
+#endif
+	(*func_log) (const char *fmt, ...);
 	/* store a string representation of auditdata (corresponding
 	   to the given security class) into msgbuf. */
 	void (*func_audit) (void *auditdata, security_class_t cls,

@@ -10,12 +10,9 @@ DEB_HOST_GNU_TYPE	:= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_HOST_MULTIARCH	:= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 LIBDIR_LIBSEPOL		:= $(shell pkg-config --variable=libdir libsepol)
 
-# for cross compilation
-ifeq ($(DEB_HOST_GNU_TYPE),$(DEB_BUILD_GNU_TYPE))
-  PREFIX = /usr
-else
-  PREFIX = /usr/$(DEB_HOST_GNU_TYPE)
-endif
+PREFIX = /usr
+
+BUILT_USING=$(shell dpkg-query -f '$${source:Package} (= $${source:Version}), ' -W "libsepol1-dev")
 
 ## Default target
 binary:
@@ -36,7 +33,11 @@ FORCE:
 ## By default, pass everything through debhelper automatically
 export DH_OPTIONS
 %: FORCE
+ifeq ($(DEB_STAGE),stage1)
+	@dh $@
+else
 	@dh $@ --with=python2,ruby
+endif
 
 ## Don't try to rebuild the debian/rules file
 debian/rules:
@@ -44,7 +45,7 @@ debian/rules:
 
 ## Skip python/ruby packages during stage1 build
 ifeq ($(DEB_STAGE),stage1)
-DH_OPTIONS += -Npython-selinux -Nruby-selinux -Nlibselinux-ruby1.8
+DH_OPTIONS += -Npython-selinux -Nruby-selinux
 endif
 
 ## Set up some variables to be passed to the upstream Makefile
@@ -66,12 +67,7 @@ override_dh_auto_install: FORCE
 	+$(MAKE) PREFIX="$(DESTDIR)$(PREFIX)" $(extra_install_args) install
 	@# Fix up the broken library symlink
 	rm -f $(DESTDIR)/usr/lib/$(DEB_HOST_MULTIARCH)/libselinux.so
-	mkdir $(DESTDIR)/selinux
 	ln -s /lib/$(DEB_HOST_MULTIARCH)/libselinux.so.1 $(DESTDIR)/usr/lib/$(DEB_HOST_MULTIARCH)/libselinux.so
-	@# Move manpages for user-accessible tools to section 1
-	install -d -m 755 $(DESTDIR)/usr/share/man/man1
-	mv $(DESTDIR)/usr/share/man/man8/getenforce.8     $(DESTDIR)/usr/share/man/man1/getenforce.1
-	mv $(DESTDIR)/usr/share/man/man8/selinuxenabled.8 $(DESTDIR)/usr/share/man/man1/selinuxenabled.1
 ifneq ($(DEB_STAGE),stage1)
 	+$(MAKE) PREFIX="$(PREFIX)" $(python_extra_install_args) -f debian/python.mk
 	+$(MAKE) PREFIX="$(PREFIX)" $(extra_install_args) -f debian/ruby.mk
@@ -82,3 +78,6 @@ endif
 ## Generate a hard error for any upstream files we don't install
 override_dh_install: FORCE
 	dh_install --fail-missing
+
+override_dh_gencontrol:
+	dh_gencontrol -- -VBuilt-Using="$(BUILT_USING)"

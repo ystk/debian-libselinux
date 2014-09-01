@@ -7,18 +7,30 @@
 #include "selinux_internal.h"
 #include "policy.h"
 
-int fsetfilecon_raw(int fd, const security_context_t context)
+int fsetfilecon_raw(int fd, const char * context)
 {
-	return fsetxattr(fd, XATTR_NAME_SELINUX, context, strlen(context) + 1,
+	int rc = fsetxattr(fd, XATTR_NAME_SELINUX, context, strlen(context) + 1,
 			 0);
+	if (rc < 0 && errno == ENOTSUP) {
+		char * ccontext = NULL;
+		int err = errno;
+		if ((fgetfilecon_raw(fd, &ccontext) >= 0) &&
+		    (strcmp(context,ccontext) == 0)) {
+			rc = 0;
+		} else {
+			errno = err;
+		}
+		freecon(ccontext);
+	}
+	return rc;
 }
 
 hidden_def(fsetfilecon_raw)
 
-int fsetfilecon(int fd, const security_context_t context)
+int fsetfilecon(int fd, const char *context)
 {
 	int ret;
-	security_context_t rcontext;
+	char * rcontext;
 
 	if (selinux_trans_to_raw_context(context, &rcontext))
 		return -1;

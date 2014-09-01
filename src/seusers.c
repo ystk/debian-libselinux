@@ -141,9 +141,16 @@ static int check_group(const char *group, const char *name, const gid_t gid) {
 	}
 
 	if (getgrouplist(name, gid, NULL, &ng) < 0) {
-		groups = (gid_t *) malloc(sizeof (gid_t) * ng);
-		if (!groups) goto done;
-		if (getgrouplist(name, gid, groups, &ng) < 0) goto done;
+		if (ng == 0)
+			goto done;
+		groups = calloc(ng, sizeof(*groups));
+		if (!groups)
+			goto done;
+		if (getgrouplist(name, gid, groups, &ng) < 0)
+			goto done;
+	} else {
+		/* WTF?  ng was 0 and we didn't fail? Are we in 0 groups? */
+		goto done;
 	}
 
 	for (i = 0; i < ng; i++) {
@@ -266,23 +273,23 @@ int getseuser(const char *username, const char *service,
 	char *level = NULL;
 	char *buffer = NULL;
 	size_t size = 0;
-	size_t lineno = 0;
 	char *rec = NULL;
 	char *path=NULL;
+	FILE *fp = NULL;
 	if (asprintf(&path,"%s/logins/%s", selinux_policy_root(), username) <  0)
 		goto err;
-	FILE *fp = fopen(path, "r");
+	fp = fopen(path, "r");
 	free(path);
 	if (fp == NULL) goto err;
 	__fsetlocking(fp, FSETLOCKING_BYCALLER);
 	while (getline(&buffer, &size, fp) > 0) {
-		++lineno;
-
 		if (strncmp(buffer, "*:", 2) == 0) {
 			free(rec);
 			rec = strdup(buffer);
 			continue;
 		}
+		if (!service)
+			continue;
 		len = strlen(service);
 		if ((strncmp(buffer, service, len) == 0) &&
 		    (buffer[len] == ':')) {
@@ -298,6 +305,7 @@ int getseuser(const char *username, const char *service,
 
 	seuser++;
 	level = strchr(seuser, ':');
+	if (! level) goto err;
 	*level = 0;
 	level++;
 	*r_seuser = strdup(seuser);

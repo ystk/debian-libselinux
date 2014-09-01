@@ -1,21 +1,23 @@
 Source: libselinux
-VCS-Git: git://anonscm.debian.org/git/selinux/libselinux.git
+VCS-Git: git://anonscm.debian.org/selinux/libselinux.git
 VCS-Browser: http://anonscm.debian.org/gitweb/?p=selinux/libselinux.git;a=summary
 Priority: optional
 Section: libs
 Maintainer: Debian SELinux maintainers <selinux-devel@lists.alioth.debian.org>
 Uploaders: Manoj Srivastava <srivasta@debian.org>,
            Russell Coker <russell@coker.com.au>
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 Build-Depends: debhelper (>= 9),
                file,
-               gem2deb (>= 0.2.7~),
-               libsepol1-dev (>= 2.1.4-2),
+               gem2deb (>= 0.5.0~),
+               libsepol1-dev (>= 2.3),
+               libpcre3-dev,
                pkg-config,
                python-all-dev (>= 2.6.6-3~),
                swig
 X-Python-Version: >= 2.4
 XS-Ruby-Versions: all
+Homepage: http://userspace.selinuxproject.org/
 
 Package: selinux-utils
 Architecture: linux-any
@@ -59,9 +61,11 @@ Description: SELinux runtime shared libraries
 Package: libselinux1-dev
 Architecture: linux-any
 Depends: libselinux1 (= ${binary:Version}),
-         libsepol1-dev (>= 2.1.4),
+         libsepol1-dev (>= 2.3),
+         libpcre3-dev,
          ${misc:Depends}
 Section: libdevel
+Multi-Arch: same
 Provides: libselinux-dev
 Conflicts: libselinux-dev
 Description: SELinux development headers
@@ -80,9 +84,6 @@ Package: ruby-selinux
 Architecture: linux-any
 Depends: ruby | ruby-interpreter, ${misc:Depends}, ${shlibs:Depends}
 Section: ruby
-Breaks: libselinux-ruby1.8 (<= 2.1.0-1)
-Replaces: libselinux-ruby1.8 (<= 2.1.0-1)
-Provides: libselinx-ruby1.8
 Description: Ruby bindings to SELinux shared libraries
  This package provides the Ruby bindings needed for developing Ruby
  SELinux applications.  Security-enhanced Linux is a patch of the
@@ -95,18 +96,10 @@ Description: Ruby bindings to SELinux shared libraries
  policies, including those based on the concepts of Type Enforcement,
  Role-based Access Control, and Multi-level Security.
 
-Package: libselinux-ruby1.8
-Section: oldlibs
-Priority: extra
-Architecture: all
-Depends: ruby-selinux, ${misc:Depends}
-Description: Transitional package for ruby-selinux
- This is a transitional package to ease upgrades to the ruby-selinux
- package.  It can be safely removed when nothing else depends on it.
-
 Package: python-selinux
 Architecture: linux-any
 Depends: ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}
+Built-Using: ${Built-Using}
 Section: python
 Provides: ${python:Provides}
 Description: Python bindings to SELinux shared libraries
