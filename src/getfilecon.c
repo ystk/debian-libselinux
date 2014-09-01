@@ -7,7 +7,7 @@
 #include <sys/xattr.h>
 #include "policy.h"
 
-int getfilecon_raw(const char *path, security_context_t * context)
+int getfilecon_raw(const char *path, char ** context)
 {
 	char *buf;
 	ssize_t size;
@@ -39,7 +39,7 @@ int getfilecon_raw(const char *path, security_context_t * context)
       out:
 	if (ret == 0) {
 		/* Re-map empty attribute values to errors. */
-		errno = EOPNOTSUPP;
+		errno = ENOTSUP;
 		ret = -1;
 	}
 	if (ret < 0)
@@ -51,10 +51,10 @@ int getfilecon_raw(const char *path, security_context_t * context)
 
 hidden_def(getfilecon_raw)
 
-int getfilecon(const char *path, security_context_t * context)
+int getfilecon(const char *path, char ** context)
 {
 	int ret;
-	security_context_t rcontext;
+	char * rcontext;
 
 	*context = NULL;
 

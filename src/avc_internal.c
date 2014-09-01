@@ -53,22 +53,22 @@ int avc_setenforce = 0;
 int avc_netlink_trouble = 0;
 
 /* netlink socket code */
-static int fd;
+static int fd = -1;
 
 int avc_netlink_open(int blocking)
 {
 	int len, rc = 0;
 	struct sockaddr_nl addr;
 
-	fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_SELINUX);
+	fd = socket(PF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_SELINUX);
 	if (fd < 0) {
 		rc = fd;
 		goto out;
 	}
 	
-	fcntl(fd, F_SETFD, FD_CLOEXEC);
 	if (!blocking && fcntl(fd, F_SETFL, O_NONBLOCK)) {
 		close(fd);
+		fd = -1;
 		rc = -1;
 		goto out;
 	}
@@ -81,6 +81,7 @@ int avc_netlink_open(int blocking)
 
 	if (bind(fd, (struct sockaddr *)&addr, len) < 0) {
 		close(fd);
+		fd = -1;
 		rc = -1;
 		goto out;
 	}
@@ -90,7 +91,9 @@ int avc_netlink_open(int blocking)
 
 void avc_netlink_close(void)
 {
-	close(fd);
+	if (fd >= 0)
+		close(fd);
+	fd = -1;
 }
 
 static int avc_netlink_receive(char *buf, unsigned buflen, int blocking)
@@ -101,7 +104,9 @@ static int avc_netlink_receive(char *buf, unsigned buflen, int blocking)
 	socklen_t nladdrlen = sizeof nladdr;
 	struct nlmsghdr *nlh = (struct nlmsghdr *)buf;
 
-	rc = poll(&pfd, 1, (blocking ? -1 : 0));
+	do {
+		rc = poll(&pfd, 1, (blocking ? -1 : 0));
+	} while (rc < 0 && errno == EINTR);
 
 	if (rc == 0 && !blocking) {
 		errno = EWOULDBLOCK;
@@ -267,6 +272,7 @@ void avc_netlink_loop(void)
 	}
 
 	close(fd);
+	fd = -1;
 	avc_netlink_trouble = 1;
 	avc_log(SELINUX_ERROR,
 		"%s:  netlink thread: errors encountered, terminating\n",

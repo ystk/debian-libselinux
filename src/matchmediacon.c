@@ -11,7 +11,7 @@
 #include <regex.h>
 #include <stdarg.h>
 
-int matchmediacon(const char *media, security_context_t * con)
+int matchmediacon(const char *media, char ** con)
 {
 	const char *path = selinux_media_context_path();
 	FILE *infile;
@@ -47,6 +47,7 @@ int matchmediacon(const char *media, security_context_t * con)
 			break;
 		}
 	}
+	fclose(infile);
 	if (!found)
 		return -1;
 
