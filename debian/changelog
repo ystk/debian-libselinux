@@ -1,3 +1,20 @@
+libselinux (2.3-2) unstable; urgency=medium
+
+  * Team upload.
+  * Add debian/patches/Add-pcre-version-string.patch: Add pcre version string
+    to the compiled file_contexts format. This is necesarry to detect the
+    cases where the internal libpcre representation has changed, if it's the
+    case libselinux will rely on the non-compiled file (Closes: #756826)
+  * Add debian/patches/Log-an-error-on-unknown-classes.patch: Log an error on
+    unknown classes and permissions.
+  * d/p/libselinux-man-Add-missing-manpage-links-to-security.patch: Add the
+    missing manpage links for selinux_mkload_policy(3) and
+    selinux_init_load_policy(3) (Closes: #753803)
+  * Drop debian/libselinux1.postinst: Reloading systemd during an upgrade in
+    an uncontroled way might endup with unwanted side effects (Closes: #753726)
+
+ -- Laurent Bigonville <bigon@debian.org>  Sun, 31 Aug 2014 20:57:58 +0200
+
 libselinux (2.3-1) unstable; urgency=medium
 
   * Team upload.

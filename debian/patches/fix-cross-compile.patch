@@ -10,7 +10,7 @@ Last-Update: 2011-10-13
 
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -75,7 +75,7 @@ CFLAGS ?= -O -Wall -W -Wundef -Wformat-y
+@@ -72,7 +72,7 @@ CFLAGS ?= -O -Wall -W -Wundef -Wformat-y
            -fipa-pure-const -Wno-suggest-attribute=pure -Wno-suggest-attribute=const \
            -Werror -Wno-aggregate-return -Wno-redundant-decls
  
